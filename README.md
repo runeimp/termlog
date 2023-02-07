@@ -7,12 +7,13 @@ Simple level based terminal logger
 Features
 --------
 
+* Conditional Level Logging: uses a different level depending if the condition is `true` or `false`
 * Custom datetime formatting
 * Custom Fatal level exit code
 * Custom Panic level exit code
 * Forcing ANSI color on or off for level labels
 * Logger namespacing
-* Outputs to `stderr`
+* Outputs to `stderr` by default but allows assignment of any `io.Writter`
 
 
 Usage Examples
@@ -33,6 +34,24 @@ func main() {
 }
 ```
 
+
+### Conditional Level Logging
+
+```go
+package main
+
+import "github.com/runeimp/termlog"
+
+func main() {
+	value := 0
+
+	log := termlog.New()
+	conditionTrueLevel := termlog.WarnLevel
+	conditionFalseLevel := termlog.DebugLevel
+	log.ConditionalLevel(value == 0, conditionTrueLevel, conditionFalseLevel, "If the value equals zero pay attention!")
+	// Output: 2023-02-06 19:20:14.192617 WARN  If the value equals zero pay attention!
+}
+```
 
 ### If You Wish to Control All Things and Use a Namespace
 
@@ -87,27 +106,32 @@ Example Output
 
 ```sh
 $ tester; echo "Exit Code: $?"
-==> Testing Logger Up to Error Level With Info Level Set
+==> Testing Logger Up to Error Level With Info Level Set and ForceColor is ForceColorOff
 
-2022-10-13 17:23:12.160502 INFO  Informational message
-2022-10-13 17:23:12.160502 WARN  Warning message
-2022-10-13 17:23:12.160502 ERROR Error message
+2023-02-06 19:20:14.192486 INFO  Informational message
+2023-02-06 19:20:14.192594 WARN  Warning message
+2023-02-06 19:20:14.192596 ERROR Error message
 
 ==> Testing Namespaced Logger with Custom TimeFormat Up to Error Level With Default Settings
 
-2022-10-13 17:23:12 my-namespace DEBUG Debugging message
-2022-10-13 17:23:12 my-namespace INFO  Informational message
-2022-10-13 17:23:12 my-namespace WARN  Warning message
-2022-10-13 17:23:12 my-namespace ERROR Error message
+2023-02-06 19:20:14 my-namespace DEBUG Debugging message
+2023-02-06 19:20:14 my-namespace INFO  Informational message
+2023-02-06 19:20:14 my-namespace WARN  Warning message
+2023-02-06 19:20:14 my-namespace ERROR Error message
 
-==> Testing Logger Up to Panic Level With Custom Exit Codes
+==> Testing Logger with the ConditionalLevel method
 
-2022-10-13 17:23:12.160502 DEBUG Debugging message
-2022-10-13 17:23:12.187299 INFO  Informational message
-2022-10-13 17:23:12.188155 WARN  Warning message
-2022-10-13 17:23:12.188542 ERROR Error message
-2022-10-13 17:23:12.188664 FATAL Fatal message
-Exit Code: 13
+2023-02-06 19:20:14.192609 INFO  This is condition: true  # Should be Info Log Level in this test
+2023-02-06 19:20:14.192617 WARN  This is condition: false # Should be Warn Log Level in this test
+
+==> Testing Logger Up to Panic Level With Custom Exit Codes and ForceColor is ForceColorOn
+
+2023-02-06 19:20:14.192621 DEBUG Debugging message
+2023-02-06 19:20:14.192623 INFO  Informational message
+2023-02-06 19:20:14.192624 WARN  Warning message
+2023-02-06 19:20:14.192626 ERROR Error message
+2023-02-06 19:20:14.192627 FATAL Fatal message
+exit status 13
 ```
 
 Above represents the output when the library is used on an unsupported system i.e.: Windows without using MS Terminal or MSYS (Git Bash, MinGW, MinGW-64, etc.). On supported systems (everything else I've tested thus far) the level colors <span style="background: black; color: white; padding: 0.2em">(<span style="color:silver; font-weight:bold;">DEBUG</span>, <span style="color:cyan; font-weight:bold;">INFO</span>, <span style="color:yellow; font-weight:bold;">WARN</span>, <span style="color:red; font-weight:bold;">ERROR</span>, <span style="color:red; font-weight:bold;">FATAL</span>, and <span style="color:red; font-weight:bold;">PANIC</span>)</span> are displayed on non-Windows systems and on Windows when using MS Terminal or ANSI colors are forced on. I may eventually add testing for color support for PowerShell, etc. on Windows when used outside of MS Terminal as well. For now you can test this with `ForceColor` as noted above in the Usage Examples.
