@@ -2,6 +2,7 @@ package termlog
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -11,16 +12,16 @@ import (
 const (
 	defaultFormat     = `2006-01-02 15:04:05.000000` // Pythonesque Timestamp instead of 2006-01-02 15:04:05 Z0700
 	SystemUnsupported = "Unsupported"
-	Version           = "0.1.0"
+	Version           = "0.2.0"
 )
 
 const (
-	DebugLevel loggingLevel = 5 // Debugging messages
-	ErrorLevel loggingLevel = 2 // Error messages (default)
-	FatalLevel loggingLevel = 1 // Fatal message with exit code 1
-	InfoLevel  loggingLevel = 4 // Informational messages
-	PanicLevel loggingLevel = 0 // Panic message with exit code 1 and stack trace
-	WarnLevel  loggingLevel = 3 // Warning messages
+	DebugLevel LoggingLevel = 5 // Debugging messages
+	ErrorLevel LoggingLevel = 2 // Error messages (default)
+	FatalLevel LoggingLevel = 1 // Fatal message with exit code 1
+	InfoLevel  LoggingLevel = 4 // Informational messages
+	PanicLevel LoggingLevel = 0 // Panic message with exit code 1 and stack trace
+	WarnLevel  LoggingLevel = 3 // Warning messages
 )
 
 const (
@@ -65,18 +66,32 @@ const (
 // colorForce used to define a trinary value type
 type colorForce string
 
-// loggingLevel is used to define logging levels
-type loggingLevel uint8
+// LoggingLevel is used to define logging levels
+type LoggingLevel uint8
 
 // Logger is the base structure for logging
 type Logger struct {
-	ForceColor    colorForce
-	Level         loggingLevel
-	Namespace     string
-	system        string
-	FatalExitCode int
-	PanicExitCode int
-	TimeFormat    string
+	ForceColor    colorForce   // Force color output
+	Level         LoggingLevel // The current logging level for this instance
+	Namespace     string       // The namespace defined for this instance
+	system        string       // The active operating system
+	FatalExitCode int          // The exit code to use on Fatal messages
+	Output        io.Writer    // The output target to use (Defaults to os.Stderr when using the New function)
+	PanicExitCode int          // The exit code to use on Panic messages
+	TimeFormat    string       // The time format to use
+}
+
+// Debug outputs a debugging level message
+func (l *Logger) ConditionalLevel(condition bool, cTrue, cFalse LoggingLevel, format string, msg ...any) {
+	if condition {
+		if l.Level >= cTrue {
+			l.printLog(cTrue, format, msg...)
+		}
+	} else {
+		if l.Level >= cFalse {
+			l.printLog(cFalse, format, msg...)
+		}
+	}
 }
 
 // Debug outputs a debugging level message
@@ -110,7 +125,7 @@ func (l *Logger) Fatal(msg ...any) {
 	os.Exit(l.FatalExitCode)
 }
 
-func (l *Logger) getLabel(level loggingLevel) (result string) {
+func (l *Logger) getLabel(level LoggingLevel) (result string) {
 	/*
 		ANSI Color Off
 			- If the system is supported and Logger.ForceColor is ForceColorOff
@@ -202,8 +217,8 @@ func (l *Logger) Panic(msg ...any) {
 	os.Exit(l.PanicExitCode)
 }
 
-func (l *Logger) printLog(level loggingLevel, format string, msg ...any) {
-	fmt.Fprintf(os.Stderr, "%s %s %s\n", time.Now().Format(l.TimeFormat), l.getLabel(level), fmt.Sprintf(format, msg...))
+func (l *Logger) printLog(level LoggingLevel, format string, msg ...any) {
+	fmt.Fprintf(l.Output, "%s %s %s\n", time.Now().Format(l.TimeFormat), l.getLabel(level), fmt.Sprintf(format, msg...))
 }
 
 func (l *Logger) String() string {
@@ -259,6 +274,7 @@ func New(args ...string) *Logger {
 		Namespace:     namespace,
 		system:        system,
 		FatalExitCode: 1,
+		Output:        os.Stderr,
 		PanicExitCode: 2,
 		TimeFormat:    defaultFormat,
 	}
