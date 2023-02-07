@@ -1,4 +1,4 @@
-TermLog v0.1.0
+TermLog v0.2.0
 ==============
 
 Simple level based terminal logger
